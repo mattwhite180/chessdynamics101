@@ -1,0 +1,58 @@
+version: "3.3"
+
+services:
+  db:
+    restart: always
+    image: postgres
+    networks:
+      - testing_net
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    volumes:
+      - .postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=myproject
+      - POSTGRES_USER=myprojectuser
+      - POSTGRES_PASSWORD=password
+  server:
+    restart: always
+    build: server/
+    # command: bash -c "sleep infinity"
+    command: ./mvnw spring-boot:run
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - testing_net
+    links:
+      - db:db
+    depends_on:
+      - db
+    environment:
+      - PGHOST=db
+      - PGDATABASE=myproject
+      - PGUSER=myprojectuser
+      - PGPASSWORD=password
+  proxy-server:
+    image: nginx:latest
+    volumes:
+      - ./nginx-frontman.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - server
+    networks:
+      - testing_net
+    ports:
+      - "80:80"
+    expose:
+      - "80"
+
+volumes:
+  postgres_data:
+
+
+networks:
+  testing_net:
+    driver: "bridge"
